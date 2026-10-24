@@ -1,0 +1,46 @@
+spring:
+  application:
+    name: kafka-workshop-grader
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/grader}
+    username: ${DATABASE_USERNAME:grader}
+    password: ${DATABASE_PASSWORD:grader}
+  sql:
+    init:
+      mode: always
+  threads:
+    virtual:
+      enabled: true
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+
+grader:
+  # A secret for the admin page and API. Admin features are off while it is empty.
+  admin-token: ${GRADER_ADMIN_TOKEN:}
+  # Teams need this code to join. Leave empty to let anyone with the link join.
+  join-code: ${GRADER_JOIN_CODE:}
+  # How many attempts run at the same time across all teams.
+  max-parallel-attempts: ${GRADER_MAX_PARALLEL_ATTEMPTS:8}
+  kafka:
+    # How the grader reaches Kafka.
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    # What teams get in their workshop.properties. Defaults to bootstrap-servers.
+    public-bootstrap-servers: ${KAFKA_PUBLIC_BOOTSTRAP_SERVERS:}
+    # PLAINTEXT for local runs, SASL_SSL for the workshop cluster.
+    security-protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+    sasl-mechanism: ${KAFKA_SASL_MECHANISM:SCRAM-SHA-512}
+    # A super user on the cluster. The grader creates team users, topics and ACLs with it.
+    admin-username: ${KAFKA_ADMIN_USERNAME:}
+    admin-password: ${KAFKA_ADMIN_PASSWORD:}
+    # PEM of the CA that signed the brokers' certificates, when it is not a public CA.
+    # Teams get it in their workshop.properties too.
+    ca-certificate: ${KAFKA_CA_CERTIFICATE:}
+    # Create ACLs for each team. Needs an authorizer on the brokers.
+    manage-acls: ${KAFKA_MANAGE_ACLS:false}

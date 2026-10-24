@@ -1,0 +1,3 @@
+# ./gradlew bootRun --args='--spring.profiles.active=dev'
+grader:
+  admin-token: dev-admin

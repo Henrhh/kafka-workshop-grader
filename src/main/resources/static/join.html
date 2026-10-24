@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Join the Kafka workshop</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><h1>Join the Kafka workshop</h1><div class="links"><a href="/">Live feed</a></div></header>
+<main class="narrow">
+  <section class="panel" id="form-panel">
+    <h2>Pick a team name</h2>
+    <p class="muted">2 to 24 characters: lower-case letters, digits and dashes, starting with a letter.
+      It shows on the leaderboard, so make it a good one.</p>
+    <form id="join">
+      <label for="team">Team name</label>
+      <input id="team" name="team" autocomplete="off" required pattern="[a-z][a-z0-9-]{1,23}" placeholder="kafka-crew">
+      <div id="code-field" class="hidden">
+        <label for="code">Join code</label>
+        <input id="code" name="code" autocomplete="off" placeholder="from the slide">
+      </div>
+      <button type="submit">Join</button>
+      <div class="error" id="error"></div>
+    </form>
+  </section>
+
+  <section class="panel hidden" id="result-panel">
+    <h2>You're in</h2>
+    <p>Save this as <code>workshop.properties</code> in the root of your fork, next to <code>build.gradle</code>.
+      It holds your team's password and is only shown once, so download it now.</p>
+    <textarea id="properties" readonly></textarea>
+    <button id="download">Download workshop.properties</button>
+    <button class="secondary" id="copy">Copy</button>
+    <div class="ok" id="copied"></div>
+    <p>Then try level 1:</p>
+    <pre><code>./gradlew test -Plevel=1
+./gradlew submit -Plevel=1</code></pre>
+  </section>
+</main>
+<script>
+  const show = (id, visible) => document.getElementById(id).classList.toggle('hidden', !visible);
+
+  fetch('/api/info').then(r => r.json()).then(info => show('code-field', info.joinCodeRequired));
+
+  document.getElementById('join').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const error = document.getElementById('error');
+    error.textContent = '';
+    const response = await fetch('/api/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        team: document.getElementById('team').value.trim().toLowerCase(),
+        joinCode: document.getElementById('code').value
+      })
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      error.textContent = body.error || 'Something went wrong. Ask a facilitator.';
+      return;
+    }
+    document.getElementById('properties').value = body.properties;
+    show('form-panel', false);
+    show('result-panel', true);
+  });
+
+  document.getElementById('download').addEventListener('click', () => {
+    const blob = new Blob([document.getElementById('properties').value], { type: 'text/plain' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'workshop.properties';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  });
+
+  document.getElementById('copy').addEventListener('click', async () => {
+    await navigator.clipboard.writeText(document.getElementById('properties').value);
+    document.getElementById('copied').textContent = 'Copied.';
+  });
+</script>
+</body>
+</html>

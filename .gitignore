@@ -1,0 +1,12 @@
+.gradle/
+build/
+out/
+.idea/
+*.iml
+.vscode/
+.DS_Store
+.env
+*.pem
+*.p12
+*.jks
+infra/kafka/secrets/

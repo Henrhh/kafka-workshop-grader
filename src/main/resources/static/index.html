@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kafka workshop: live</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <h1>Kafka workshop</h1>
+  <div class="links">Join at <a href="join.html" id="join-link">join.html</a> · <span id="status">connecting…</span></div>
+</header>
+<div class="screen">
+  <section class="panel">
+    <h2>Live feed</h2>
+    <div id="feed"></div>
+  </section>
+  <div class="side">
+    <section class="panel">
+      <h2>Leaderboard</h2>
+      <table>
+        <thead><tr><th>#</th><th>Team</th><th class="num">Levels</th><th class="num">Points</th></tr></thead>
+        <tbody id="leaderboard"></tbody>
+      </table>
+    </section>
+    <section class="panel">
+      <h2>Levels</h2>
+      <table class="grid"><thead id="board-head"></thead><tbody id="board"></tbody></table>
+    </section>
+  </div>
+</div>
+<script src="feed.js"></script>
+</body>
+</html>

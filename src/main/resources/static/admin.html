@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Kafka workshop admin</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top"><h1>Facilitator</h1><div class="links"><a href="/">Live feed</a></div></header>
+<main class="narrow">
+  <section class="panel">
+    <h2>Admin token</h2>
+    <input id="token" type="password" placeholder="GRADER_ADMIN_TOKEN">
+    <p class="muted">Kept in this browser tab only.</p>
+  </section>
+
+  <section class="panel">
+    <h2>Announcement</h2>
+    <label for="message">Shown on the live feed</label>
+    <input id="message" placeholder="Boss level opens in 10 minutes">
+    <button id="announce">Post</button>
+    <div id="announce-result"></div>
+  </section>
+
+  <section class="panel">
+    <h2>Teams</h2>
+    <label for="team">Team name</label>
+    <input id="team" placeholder="kafka-crew">
+    <button id="create">Create team</button>
+    <button class="secondary" id="reset">New password for team</button>
+    <button class="secondary" id="list">List teams</button>
+    <div id="team-result"></div>
+    <textarea id="properties" class="hidden" readonly></textarea>
+  </section>
+</main>
+<script>
+  const tokenInput = document.getElementById('token');
+  try { tokenInput.value = sessionStorage.getItem('adminToken') || ''; } catch (e) { }
+  tokenInput.addEventListener('change', () => {
+    try { sessionStorage.setItem('adminToken', tokenInput.value); } catch (e) { }
+  });
+
+  async function call(method, path, body) {
+    const response = await fetch(path, {
+      method,
+      headers: { 'Content-Type': 'application/json', 'X-Admin-Token': tokenInput.value },
+      body: body ? JSON.stringify(body) : undefined
+    });
+    const json = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(json.error || response.status);
+    return json;
+  }
+
+  function report(id, ok, text) {
+    const node = document.getElementById(id);
+    node.className = ok ? 'ok' : 'error';
+    node.textContent = text;
+  }
+
+  function showProperties(text) {
+    const area = document.getElementById('properties');
+    area.value = text;
+    area.classList.remove('hidden');
+  }
+
+  document.getElementById('announce').addEventListener('click', async () => {
+    try {
+      await call('POST', '/api/admin/announcements', { message: document.getElementById('message').value });
+      report('announce-result', true, 'Posted.');
+      document.getElementById('message').value = '';
+    } catch (e) { report('announce-result', false, e.message); }
+  });
+
+  document.getElementById('create').addEventListener('click', async () => {
+    try {
+      const result = await call('POST', '/api/admin/teams', { team: document.getElementById('team').value.trim() });
+      report('team-result', true, 'Created ' + result.team + '. Give them this file:');
+      showProperties(result.properties);
+    } catch (e) { report('team-result', false, e.message); }
+  });
+
+  document.getElementById('reset').addEventListener('click', async () => {
+    const team = document.getElementById('team').value.trim();
+    try {
+      const result = await call('POST', '/api/admin/teams/' + encodeURIComponent(team) + '/reset');
+      report('team-result', true, 'New password for ' + team + '. Their old file stops working:');
+      showProperties(result.properties);
+    } catch (e) { report('team-result', false, e.message); }
+  });
+
+  document.getElementById('list').addEventListener('click', async () => {
+    try {
+      const teams = await call('GET', '/api/admin/teams');
+      report('team-result', true, teams.length + ' teams: ' + teams.join(', '));
+    } catch (e) { report('team-result', false, e.message); }
+  });
+</script>
+</body>
+</html>

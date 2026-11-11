@@ -1,0 +1,91 @@
+# Three Kafka brokers on one VM for the workshop.
+#
+# Teams and the grader connect on ports 9092-9094 with SASL_SSL (SCRAM-SHA-512).
+# Brokers talk to each other on a plain-text listener that is only reachable inside the
+# Docker network. Never publish ports 19092 or 9093 (controller) on the VM.
+#
+# Before the first start:  ./gen-certs.sh <public host name>
+# After the first start:   ./create-admin.sh
+# See README.md in this folder.
+
+x-kafka: &kafka
+  image: apache/kafka:4.4.0
+  restart: unless-stopped
+
+x-env: &env
+  CLUSTER_ID: ${CLUSTER_ID:?set CLUSTER_ID in .env}
+  KAFKA_PROCESS_ROLES: broker,controller
+  KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka-1:9093,2@kafka-2:9093,3@kafka-3:9093
+  KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+  KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
+  KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,INTERNAL:PLAINTEXT,EXTERNAL:SASL_SSL
+  KAFKA_SASL_ENABLED_MECHANISMS: SCRAM-SHA-512
+  KAFKA_LISTENER_NAME_EXTERNAL_SCRAM___SHA___512_SASL_JAAS_CONFIG: org.apache.kafka.common.security.scram.ScramLoginModule required ;
+  KAFKA_SSL_KEYSTORE_TYPE: PKCS12
+  KAFKA_SSL_KEYSTORE_LOCATION: /etc/kafka/secrets/broker.p12
+  KAFKA_SSL_KEYSTORE_PASSWORD: ${KEYSTORE_PASSWORD:?set KEYSTORE_PASSWORD in .env}
+  KAFKA_SSL_KEY_PASSWORD: ${KEYSTORE_PASSWORD}
+  KAFKA_SSL_CLIENT_AUTH: none
+  # ACLs. The grader's user and the in-network plain-text listener are super users.
+  KAFKA_AUTHORIZER_CLASS_NAME: org.apache.kafka.metadata.authorizer.StandardAuthorizer
+  KAFKA_SUPER_USERS: User:${ADMIN_USERNAME:-grader};User:ANONYMOUS
+  KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND: "false"
+  # Replication and defaults.
+  KAFKA_DEFAULT_REPLICATION_FACTOR: 3
+  KAFKA_MIN_INSYNC_REPLICAS: 2
+  KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 3
+  KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 2
+  KAFKA_NUM_PARTITIONS: 3
+  KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"
+  KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+  KAFKA_LOG_RETENTION_HOURS: 72
+  KAFKA_HEAP_OPTS: -Xms1g -Xmx1g
+
+services:
+  kafka-1:
+    <<: *kafka
+    hostname: kafka-1
+    ports:
+      - "9092:9092"
+    environment:
+      <<: *env
+      KAFKA_NODE_ID: 1
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:19092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-1:19092,EXTERNAL://${KAFKA_HOST:?set KAFKA_HOST in .env}:9092
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - kafka-1:/var/lib/kafka/data
+
+  kafka-2:
+    <<: *kafka
+    hostname: kafka-2
+    ports:
+      - "9093:9092"
+    environment:
+      <<: *env
+      KAFKA_NODE_ID: 2
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:19092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-2:19092,EXTERNAL://${KAFKA_HOST}:9093
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - kafka-2:/var/lib/kafka/data
+
+  kafka-3:
+    <<: *kafka
+    hostname: kafka-3
+    ports:
+      - "9094:9092"
+    environment:
+      <<: *env
+      KAFKA_NODE_ID: 3
+      KAFKA_LISTENERS: CONTROLLER://:9093,INTERNAL://:19092,EXTERNAL://:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka-3:19092,EXTERNAL://${KAFKA_HOST}:9094
+    volumes:
+      - ./secrets:/etc/kafka/secrets:ro
+      - kafka-3:/var/lib/kafka/data
+
+volumes:
+  kafka-1:
+  kafka-2:
+  kafka-3:
